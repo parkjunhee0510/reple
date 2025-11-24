@@ -1,0 +1,14 @@
+.footer {
+    width: 100%;
+    background: #f4f4f4;
+    padding: 16px 0;
+    color: #555;
+    margin-top: 50px;
+}
+
+.footer .inner {
+    width: 1200px;
+    margin: 0 auto;
+    text-align: center;
+    font-size: 14px;
+}
