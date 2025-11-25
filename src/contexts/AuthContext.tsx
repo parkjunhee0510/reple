@@ -6,45 +6,57 @@ interface AuthContextProps {
     isAuthenticated: boolean;
     token: string | null;
     login: (token: string, autoLogin?: boolean) => void;
-    logout: () => void;
+    logout: () => Promise<void>;
+    isLoading: boolean;
 }
 
 const AuthContext = createContext<AuthContextProps>({
     isAuthenticated: false,
     token: null,
     login: () => {},
-    logout: () => {},
+    logout: async () => {},
+    isLoading: true,
 });
 
-// Provider -----------------------------------------------------
+// -----------------------------------------------------
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const [token, setToken] = useState<string | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
 
-    // 앱 시작 시 localStorage or sessionStorage에서 토큰 가져오기
+    // 앱 최초 실행 시 토큰 복원
     useEffect(() => {
         const savedToken =
             localStorage.getItem("access_token") ||
             sessionStorage.getItem("access_token");
 
         if (savedToken) setToken(savedToken);
+
+        setIsLoading(false);
     }, []);
 
-    const login = (token: string, autoLogin: boolean = true) => {
+    //  로그인 토큰 저장 + 상태 반영
+    const login = (newToken: string, autoLogin: boolean = true) => {
         if (autoLogin) {
-            localStorage.setItem("access_token", token);
+            localStorage.setItem("access_token", newToken);
             sessionStorage.removeItem("access_token");
         } else {
-            sessionStorage.setItem("access_token", token);
+            sessionStorage.setItem("access_token", newToken);
             localStorage.removeItem("access_token");
         }
-        setToken(token);
+
+        setToken(newToken);
     };
 
+    // 로그아웃 서버 + 클라이언트 처리
     const logout = async () => {
-        await api.post("/user/logout", {}); // withCredentials는 axios 설정에 이미 있음
+        try {
+            await api.post("/user/logout", {}); // refresh token 삭제
+        } catch (err) {
+            console.warn("로그아웃 요청 실패 (무시 가능)", err);
+        }
 
-        // 모든 저장소에서 삭제
+        // 클라이언트 모든 인증 정보 제거
         localStorage.removeItem("access_token");
         sessionStorage.removeItem("access_token");
 
@@ -56,6 +68,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         token,
         login,
         logout,
+        isLoading,
     };
 
     return (
@@ -65,6 +78,5 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     );
 };
 
-// Hook ---------------------------------------------------------
-
+// Hook
 export const useAuth = () => useContext(AuthContext);
